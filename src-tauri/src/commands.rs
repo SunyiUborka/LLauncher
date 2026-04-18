@@ -1,0 +1,224 @@
+use tauri::{Emitter, State};
+
+use crate::config::settings::AppSettings;
+use crate::error::AppError;
+use crate::state::AppState;
+
+#[tauri::command]
+pub async fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, AppError> {
+    let settings = state.settings.lock().await;
+    Ok(settings.clone())
+}
+
+#[tauri::command]
+pub async fn save_settings(
+    state: State<'_, AppState>,
+    settings: AppSettings,
+) -> Result<(), AppError> {
+    settings.save()?;
+    let mut current = state.settings.lock().await;
+    *current = settings;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_game_version(
+    state: State<'_, AppState>,
+) -> Result<crate::api::types::GameVersionResponse, AppError> {
+    let settings = state.settings.lock().await;
+    let version = settings.installed_version.clone();
+    drop(settings);
+    crate::api::client::get_latest_game_version(&state.http_client, &version).await
+}
+
+#[tauri::command]
+pub async fn get_launcher_content(
+    state: State<'_, AppState>,
+) -> Result<crate::api::types::LauncherContent, AppError> {
+    let settings = state.settings.lock().await;
+    let lang = settings.language.clone();
+    drop(settings);
+    crate::api::client::get_launcher_content(&state.http_client, &lang).await
+}
+
+#[tauri::command]
+pub async fn check_game_state(
+    state: State<'_, AppState>,
+) -> Result<crate::game::state::GameState, AppError> {
+    let settings = state.settings.lock().await;
+    let game_dir = settings.game_dir.clone();
+    let installed_version = settings.installed_version.clone();
+    drop(settings);
+    crate::game::state::determine_game_state(
+        &state.http_client,
+        &game_dir,
+        &installed_version,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn start_download(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    let settings = state.settings.lock().await;
+    let download_dir = settings.download_dir.clone();
+    let game_dir = settings.game_dir.clone();
+    let installed_version = settings.installed_version.clone();
+    let speed_limit = settings.download_speed_limit;
+    let max_concurrent = settings.download_max_concurrent.clamp(1, 8);
+    drop(settings);
+
+    let client = state.http_client.clone();
+    let download_active = state.download_active.clone();
+
+    crate::download::manager::start_download(
+        app,
+        client,
+        download_active,
+        &download_dir,
+        &game_dir,
+        &installed_version,
+        speed_limit,
+        max_concurrent,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cancel_download(state: State<'_, AppState>) -> Result<(), AppError> {
+    state
+        .download_active
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn launch_game(state: State<'_, AppState>) -> Result<(), AppError> {
+    let settings = state.settings.lock().await;
+    let settings_clone = settings.clone();
+    drop(settings);
+    crate::game::launcher::launch_game(&settings_clone)
+}
+
+#[tauri::command]
+pub async fn update_installed_version(
+    state: State<'_, AppState>,
+    version: String,
+) -> Result<(), AppError> {
+    let mut settings = state.settings.lock().await;
+    settings.installed_version = version;
+    settings.save()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_system_requirements(
+    state: State<'_, AppState>,
+) -> Result<crate::game::proton::SystemCheck, AppError> {
+    let settings = state.settings.lock().await;
+    let proton_dir = settings.proton_dir.clone();
+    drop(settings);
+    Ok(crate::game::proton::check_system(&proton_dir))
+}
+
+#[tauri::command]
+pub async fn get_dwproton_latest(
+    state: State<'_, AppState>,
+) -> Result<crate::api::types::ProtonReleaseInfo, AppError> {
+    crate::download::proton::get_latest_dwproton_info(&state.http_client).await
+}
+
+#[tauri::command]
+pub async fn list_dwproton_releases(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::api::types::ProtonReleaseInfo>, AppError> {
+    crate::download::proton::list_dwproton_releases(&state.http_client).await
+}
+
+#[tauri::command]
+pub async fn list_installed_protons() -> Result<Vec<crate::api::types::InstalledProton>, AppError> {
+    let base = crate::config::paths::default_proton_dir();
+    let mut installed = Vec::new();
+
+    if let Ok(entries) = std::fs::read_dir(&base) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() && path.join("proton").exists() {
+                let name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                installed.push(crate::api::types::InstalledProton {
+                    name,
+                    path: path.to_string_lossy().to_string(),
+                });
+            }
+        }
+    }
+
+    installed.sort_by(|a, b| b.name.cmp(&a.name));
+    Ok(installed)
+}
+
+#[tauri::command]
+pub async fn set_active_proton(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<(), AppError> {
+    let mut settings = state.settings.lock().await;
+    settings.proton_dir = path;
+    settings.save()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn download_dwproton(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    release: Option<crate::api::types::ProtonReleaseInfo>,
+) -> Result<(), AppError> {
+    // Always download to the base proton directory
+    let base_dir = crate::config::paths::default_proton_dir()
+        .to_string_lossy()
+        .to_string();
+
+    let client = state.http_client.clone();
+    let cancel_flag = state.proton_download_active.clone();
+    cancel_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    let result =
+        crate::download::proton::download_and_extract_dwproton(&app, &client, &cancel_flag, &base_dir, release)
+            .await;
+
+    cancel_flag.store(false, std::sync::atomic::Ordering::SeqCst);
+
+    match result {
+        Ok((proton_dir, _version)) => {
+            let mut settings = state.settings.lock().await;
+            settings.proton_dir = proton_dir;
+            settings.save()?;
+            Ok(())
+        }
+        Err(e) => {
+            app.emit(
+                "proton://error",
+                crate::api::types::DownloadError {
+                    message: e.to_string(),
+                },
+            )
+            .ok();
+            Err(e)
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn cancel_proton_download(state: State<'_, AppState>) -> Result<(), AppError> {
+    state
+        .proton_download_active
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+    Ok(())
+}

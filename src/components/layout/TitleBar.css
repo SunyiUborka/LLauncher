@@ -1,0 +1,56 @@
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--titlebar-height);
+  padding: 0 var(--space-sm);
+  background: rgba(10, 10, 15, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 100;
+  border-radius: 10px 10px 0 0;
+}
+
+.titlebar__title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-left: var(--space-sm);
+  letter-spacing: 0.5px;
+}
+
+.titlebar__controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: var(--titlebar-height);
+  border-radius: 0;
+  transition: background var(--transition-fast);
+}
+
+.titlebar__btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar__btn--close:hover {
+  background: var(--color-error);
+}
+
+.titlebar__btn svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--color-text-secondary);
+}
+
+.titlebar__btn--close:hover svg {
+  fill: white;
+}

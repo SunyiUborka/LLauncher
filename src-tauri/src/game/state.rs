@@ -1,0 +1,49 @@
+use serde::Serialize;
+use std::path::Path;
+
+use crate::error::AppError;
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "status")]
+pub enum GameState {
+    #[serde(rename = "not_installed")]
+    NotInstalled { latest_version: String },
+    #[serde(rename = "update_available")]
+    UpdateAvailable {
+        installed_version: String,
+        latest_version: String,
+    },
+    #[serde(rename = "ready")]
+    Ready { version: String },
+}
+
+pub async fn determine_game_state(
+    client: &reqwest::Client,
+    game_dir: &str,
+    installed_version: &str,
+) -> Result<GameState, AppError> {
+    let game_path = Path::new(game_dir);
+    let exe_path = game_path.join("Endfield.exe");
+
+    // Get latest version from API
+    let version_info =
+        crate::api::client::get_latest_game_version(client, installed_version).await?;
+    let latest_version = version_info.version;
+
+    // Check if game is installed
+    if installed_version.is_empty() || !exe_path.exists() {
+        return Ok(GameState::NotInstalled { latest_version });
+    }
+
+    // Check if update is available
+    if installed_version != latest_version {
+        return Ok(GameState::UpdateAvailable {
+            installed_version: installed_version.to_string(),
+            latest_version,
+        });
+    }
+
+    Ok(GameState::Ready {
+        version: installed_version.to_string(),
+    })
+}

@@ -1,0 +1,28 @@
+[package]
+name = "llauncher"
+version = "0.1.2"
+description = "Linux Launcher for Arknights: Endfield"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "llauncher_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+tokio = { version = "1", features = ["full"] }
+thiserror = "2"
+md-5 = "0.10"
+futures-util = "0.3"
+dirs = "6"
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"

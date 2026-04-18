@@ -1,0 +1,34 @@
+.single-ent-card {
+  position: relative;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  max-width: 480px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.single-ent-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+}
+
+.single-ent-card__image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-lg);
+}
+
+.single-ent-card__button {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  height: 40px;
+  width: auto;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.single-ent-card__button:hover {
+  transform: scale(1.05);
+}

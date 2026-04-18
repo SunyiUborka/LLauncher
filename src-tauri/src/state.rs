@@ -1,0 +1,26 @@
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
+use crate::config::settings::AppSettings;
+
+pub struct AppState {
+    pub settings: tokio::sync::Mutex<AppSettings>,
+    pub http_client: reqwest::Client,
+    pub download_active: Arc<AtomicBool>,
+    pub proton_download_active: Arc<AtomicBool>,
+}
+
+impl AppState {
+    pub fn new(settings: AppSettings) -> Self {
+        Self {
+            settings: tokio::sync::Mutex::new(settings),
+            http_client: reqwest::Client::builder()
+                .tcp_nodelay(true)
+                .pool_max_idle_per_host(10)
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
+            download_active: Arc::new(AtomicBool::new(false)),
+            proton_download_active: Arc::new(AtomicBool::new(false)),
+        }
+    }
+}

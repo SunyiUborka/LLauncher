@@ -1,0 +1,26 @@
+import { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+
+export default function useSettings() {
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    invoke('get_settings')
+      .then(setSettings)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const saveSettings = useCallback(async (newSettings) => {
+    try {
+      await invoke('save_settings', { settings: newSettings });
+      setSettings(newSettings);
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+      throw e;
+    }
+  }, []);
+
+  return { settings, loading, saveSettings };
+}

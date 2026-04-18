@@ -1,0 +1,36 @@
+.news-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+  animation: fadeInUp var(--transition-slow) ease both;
+}
+
+.news-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.news-item__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.news-item__text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  line-height: 1.6;
+}
+
+.news-item:hover .news-item__text {
+  color: var(--color-accent);
+}

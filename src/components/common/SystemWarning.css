@@ -1,0 +1,27 @@
+.system-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  animation: fadeIn var(--transition-base) ease;
+}
+
+.system-warning--warn {
+  background: rgba(240, 178, 50, 0.1);
+  border-color: rgba(240, 178, 50, 0.2);
+  color: var(--color-warning);
+}
+
+.system-warning__icon {
+  flex-shrink: 0;
+  font-size: var(--font-size-lg);
+}
+
+.system-warning__text {
+  line-height: 1.4;
+}
