@@ -1,7 +1,9 @@
 import { formatSize, formatSpeed, formatEta } from '../../utils/format';
+import { useTranslation } from '../../i18n';
 import './ProgressBar.css';
 
 export default function ProgressBar({ progress, onCancel }) {
+  const { t } = useTranslation();
   if (!progress) return null;
 
   const percent = progress.bytes_total > 0
@@ -19,7 +21,7 @@ export default function ProgressBar({ progress, onCancel }) {
       <div className="progress-bar__info">
         <span>
           {formatSize(progress.bytes_downloaded)} / {formatSize(progress.bytes_total)}
-          {' \u2014 '}{percent}%
+          {' — '}{percent}%
         </span>
         <span>
           {formatSpeed(progress.speed_bps)}
@@ -30,9 +32,13 @@ export default function ProgressBar({ progress, onCancel }) {
         </span>
       </div>
       <div className="progress-bar__file">
-        File {progress.file_index + 1}/{progress.total_files}: {progress.file_name}
+        {t('progress.fileLabel', {
+          current: progress.file_index + 1,
+          total: progress.total_files,
+          name: progress.file_name,
+        })}
         <button className="progress-bar__cancel" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </div>

@@ -221,3 +221,11 @@ pub struct DownloadComplete {
 pub struct DownloadError {
     pub message: String,
 }
+
+// ─── Launch events ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LaunchFailed {
+    pub exit_code: Option<i32>,
+    pub log_tail: String,
+}

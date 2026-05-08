@@ -1,0 +1,105 @@
+.log-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+  animation: fadeIn 200ms ease;
+}
+
+.log-viewer {
+  width: 720px;
+  max-width: 90%;
+  max-height: 80%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 250ms ease;
+}
+
+.log-viewer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.log-viewer__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.log-viewer__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.log-viewer__refresh {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent);
+  background: none;
+  padding: 4px var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.log-viewer__refresh:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.log-viewer__refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.log-viewer__close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+  font-size: 18px;
+}
+
+.log-viewer__close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.log-viewer__body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.log-viewer__pre {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  white-space: pre;
+  margin: 0;
+}
+
+.log-viewer__empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  padding: var(--space-xl);
+}

@@ -1,11 +1,14 @@
+import { useTranslation } from '../../i18n';
 import './GameStatus.css';
 
 export default function GameStatus({ gameState }) {
+  const { t } = useTranslation();
+
   if (!gameState) {
     return (
       <div className="game-info">
-        <div className="game-info__subtitle">Arknights: Endfield</div>
-        <div className="game-info__title">Loading...</div>
+        <div className="game-info__subtitle">{t('home.gameSubtitle')}</div>
+        <div className="game-info__title">{t('common.loading')}</div>
       </div>
     );
   }
@@ -13,11 +16,11 @@ export default function GameStatus({ gameState }) {
   const getBadge = () => {
     switch (gameState.status) {
       case 'ready':
-        return { cls: 'game-info__badge--ready', text: 'Ready to play' };
+        return { cls: 'game-info__badge--ready', text: t('home.badge.ready') };
       case 'update_available':
-        return { cls: 'game-info__badge--update', text: 'Update available' };
+        return { cls: 'game-info__badge--update', text: t('home.badge.update') };
       case 'not_installed':
-        return { cls: 'game-info__badge--not-installed', text: 'Not installed' };
+        return { cls: 'game-info__badge--not-installed', text: t('home.badge.notInstalled') };
       default:
         return { cls: '', text: '' };
     }
@@ -31,7 +34,7 @@ export default function GameStatus({ gameState }) {
         return (
           <span className="game-info__version">
             v{gameState.installed_version}
-            <span className="game-info__version-arrow">{'\u2192'}</span>
+            <span className="game-info__version-arrow">{'→'}</span>
             v{gameState.latest_version}
           </span>
         );
@@ -46,8 +49,8 @@ export default function GameStatus({ gameState }) {
 
   return (
     <div className="game-info">
-      <div className="game-info__subtitle">Arknights: Endfield</div>
-      <div className="game-info__title">Endfield</div>
+      <div className="game-info__subtitle">{t('home.gameSubtitle')}</div>
+      <div className="game-info__title">{t('home.gameTitle')}</div>
       <div className="game-info__meta">
         <div className={`game-info__badge ${badge.cls}`}>
           <span className="game-info__badge-dot" />

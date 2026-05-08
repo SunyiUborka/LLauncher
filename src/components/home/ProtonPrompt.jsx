@@ -1,8 +1,10 @@
 import useProtonDownload from '../../hooks/useProtonDownload';
 import { formatSize, formatSpeed, formatPercent } from '../../utils/format';
+import { useTranslation } from '../../i18n';
 import './ProtonPrompt.css';
 
 export default function ProtonPrompt({ onClose, onConfigureManually, onDownloadComplete }) {
+  const { t } = useTranslation();
   const { downloading, progress, error, startDownload, cancelDownload } =
     useProtonDownload(onDownloadComplete);
 
@@ -10,31 +12,28 @@ export default function ProtonPrompt({ onClose, onConfigureManually, onDownloadC
     <div className="proton-prompt-overlay" onClick={onClose}>
       <div className="proton-prompt" onClick={(e) => e.stopPropagation()}>
         <div className="proton-prompt__header">
-          <span className="proton-prompt__title">DWProton Required</span>
+          <span className="proton-prompt__title">{t('protonPrompt.title')}</span>
           <button className="proton-prompt__close" onClick={onClose}>
-            {'\u2715'}
+            {'✕'}
           </button>
         </div>
 
         <div className="proton-prompt__body">
           {!downloading && !error && (
             <>
-              <p className="proton-prompt__text">
-                DWProton is not found. It is required to run the game on Linux.
-                Would you like to download it automatically?
-              </p>
+              <p className="proton-prompt__text">{t('protonPrompt.body')}</p>
               <div className="proton-prompt__actions">
                 <button
                   className="proton-prompt__btn proton-prompt__btn--primary"
                   onClick={startDownload}
                 >
-                  Download DWProton
+                  {t('protonPrompt.download')}
                 </button>
                 <button
                   className="proton-prompt__btn proton-prompt__btn--secondary"
                   onClick={onConfigureManually}
                 >
-                  Configure manually
+                  {t('protonPrompt.configure')}
                 </button>
               </div>
             </>
@@ -43,10 +42,10 @@ export default function ProtonPrompt({ onClose, onConfigureManually, onDownloadC
           {downloading && progress && (
             <div className="proton-prompt__progress">
               <div className="proton-prompt__progress-info">
-                <span>{progress.stage === 'extracting' ? 'Extracting...' : 'Downloading...'}</span>
+                <span>{progress.stage === 'extracting' ? t('protonPrompt.extracting') : t('protonPrompt.downloading')}</span>
                 <span>
                   {formatPercent(progress.bytes_downloaded, progress.bytes_total)}
-                  {progress.speed_bps > 0 && ` \u2022 ${formatSpeed(progress.speed_bps)}`}
+                  {progress.speed_bps > 0 && ` • ${formatSpeed(progress.speed_bps)}`}
                 </span>
               </div>
               <div className="proton-prompt__progress-bar">
@@ -66,7 +65,7 @@ export default function ProtonPrompt({ onClose, onConfigureManually, onDownloadC
                 className="proton-prompt__btn proton-prompt__btn--secondary"
                 onClick={cancelDownload}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           )}
@@ -79,13 +78,13 @@ export default function ProtonPrompt({ onClose, onConfigureManually, onDownloadC
                   className="proton-prompt__btn proton-prompt__btn--primary"
                   onClick={startDownload}
                 >
-                  Retry
+                  {t('common.retry')}
                 </button>
                 <button
                   className="proton-prompt__btn proton-prompt__btn--secondary"
                   onClick={onClose}
                 >
-                  Close
+                  {t('common.close')}
                 </button>
               </div>
             </div>

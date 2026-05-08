@@ -2,19 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import PathSelector from './PathSelector';
 import LanguageSelector from './LanguageSelector';
+import LogViewer from '../common/LogViewer';
 import useProtonDownload from '../../hooks/useProtonDownload';
 import { formatSize, formatSpeed, formatPercent } from '../../utils/format';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+import { useTranslation } from '../../i18n';
 import './SettingsModal.css';
 
-const TABS = [
-  { id: 'paths', label: 'Paths' },
-  { id: 'proton', label: 'Proton' },
-  { id: 'launch', label: 'Launch' },
-  { id: 'downloads', label: 'Downloads' },
-];
-
 export default function SettingsModal({ settings, systemCheck, onRefreshSystemCheck, onSave, onClose }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(null);
   const [activeTab, setActiveTab] = useState('paths');
   const [speedUnit, setSpeedUnit] = useState('MB/s');
@@ -22,6 +18,16 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
   const [installedProtons, setInstalledProtons] = useState([]);
   const [releasesLoading, setReleasesLoading] = useState(false);
   const [autostart, setAutostart] = useState(false);
+  const [showLog, setShowLog] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+
+  const TABS = [
+    { id: 'paths', label: t('settings.tab.paths') },
+    { id: 'proton', label: t('settings.tab.proton') },
+    { id: 'launch', label: t('settings.tab.launch') },
+    { id: 'downloads', label: t('settings.tab.downloads') },
+    { id: 'game', label: t('settings.tab.game') },
+  ];
 
   const fetchInstalled = useCallback(async () => {
     try {
@@ -116,6 +122,20 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
     }
   };
 
+  const handleRepair = async () => {
+    if (repairing) return;
+    if (!confirm(t('settings.repair.confirm'))) return;
+    setRepairing(true);
+    try {
+      await invoke('repair_game');
+      onClose();
+    } catch (e) {
+      console.error('Failed to repair:', e);
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   const findInstalled = (tagName) => {
     return installedProtons.find((p) => p.name === tagName || p.name.startsWith(tagName + '-'));
   };
@@ -138,9 +158,9 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="settings-modal__header">
-          <span className="settings-modal__title">Settings</span>
+          <span className="settings-modal__title">{t('settings.title')}</span>
           <button className="settings-modal__close" onClick={onClose}>
-            {'\u2715'}
+            {'✕'}
           </button>
         </div>
 
@@ -160,7 +180,7 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
           {activeTab === 'paths' && (
             <>
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Game directory</span>
+                <span className="settings-modal__label">{t('settings.gameDir')}</span>
                 <PathSelector
                   value={form.game_dir}
                   onChange={(v) => handleChange('game_dir', v)}
@@ -168,16 +188,16 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
               </div>
 
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Download directory</span>
+                <span className="settings-modal__label">{t('settings.downloadDir')}</span>
                 <PathSelector
                   value={form.download_dir}
                   onChange={(v) => handleChange('download_dir', v)}
                 />
-                <span className="settings-modal__hint">Temporary directory for downloaded archives</span>
+                <span className="settings-modal__hint">{t('settings.downloadDirHint')}</span>
               </div>
 
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Language</span>
+                <span className="settings-modal__label">{t('settings.language')}</span>
                 <LanguageSelector
                   value={form.language}
                   onChange={(v) => handleChange('language', v)}
@@ -189,30 +209,30 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
           {activeTab === 'proton' && (
             <>
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Active DWProton</span>
+                <span className="settings-modal__label">{t('settings.activeProton')}</span>
                 <PathSelector
                   value={form.proton_dir}
                   onChange={(v) => handleChange('proton_dir', v)}
                 />
                 <span className="settings-modal__hint">
-                  Status: {systemCheck?.has_proton ? 'Ready' : 'Not found'}
+                  {t('settings.statusPrefix')} {systemCheck?.has_proton ? t('common.ready') : t('common.notFound')}
                 </span>
               </div>
 
               <div className="settings-modal__section">
                 <div className="settings-proton__header">
-                  <span className="settings-modal__label">Available versions</span>
+                  <span className="settings-modal__label">{t('settings.availableVersions')}</span>
                   <button
                     className="settings-proton__refresh-btn"
                     onClick={() => { fetchReleases(); fetchInstalled(); }}
                     disabled={releasesLoading}
                   >
-                    {releasesLoading ? 'Loading...' : 'Refresh'}
+                    {releasesLoading ? t('common.loading') : t('common.refresh')}
                   </button>
                 </div>
 
                 {releasesLoading && releases.length === 0 ? (
-                  <span className="settings-modal__hint">Loading releases...</span>
+                  <span className="settings-modal__hint">{t('settings.loadingReleases')}</span>
                 ) : releases.length > 0 ? (
                   <div className="settings-proton__list">
                     {releases.map((r) => {
@@ -223,8 +243,8 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
                           <div className="settings-proton__item-info">
                             <span className="settings-proton__item-name">
                               {r.tag_name}
-                              {active && <span className="settings-proton__badge settings-proton__badge--active">Active</span>}
-                              {installed && !active && <span className="settings-proton__badge settings-proton__badge--installed">Installed</span>}
+                              {active && <span className="settings-proton__badge settings-proton__badge--active">{t('settings.badgeActive')}</span>}
+                              {installed && !active && <span className="settings-proton__badge settings-proton__badge--installed">{t('settings.badgeInstalled')}</span>}
                             </span>
                             <span className="settings-proton__item-meta">
                               {r.published_at || 'unknown'} &middot; {formatSize(r.size)}
@@ -237,7 +257,7 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
                                   className="settings-proton__use-btn"
                                   onClick={() => handleSetActiveProton(getInstalledPath(r.tag_name))}
                                 >
-                                  Use
+                                  {t('settings.use')}
                                 </button>
                               )
                             ) : (
@@ -246,7 +266,7 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
                                 onClick={() => handleProtonDownload(r)}
                                 disabled={protonDownloading}
                               >
-                                Download
+                                {t('settings.download')}
                               </button>
                             )}
                           </div>
@@ -255,17 +275,17 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
                     })}
                   </div>
                 ) : (
-                  <span className="settings-modal__hint">No releases found</span>
+                  <span className="settings-modal__hint">{t('settings.noReleases')}</span>
                 )}
               </div>
 
               {protonDownloading && protonProgress && (
                 <div className="settings-proton__progress">
                   <div className="settings-proton__progress-info">
-                    <span>{protonProgress.stage === 'extracting' ? 'Extracting...' : 'Downloading...'}</span>
+                    <span>{protonProgress.stage === 'extracting' ? t('protonPrompt.extracting') : t('protonPrompt.downloading')}</span>
                     <span>
                       {formatPercent(protonProgress.bytes_downloaded, protonProgress.bytes_total)}
-                      {protonProgress.speed_bps > 0 && ` \u2022 ${formatSpeed(protonProgress.speed_bps)}`}
+                      {protonProgress.speed_bps > 0 && ` • ${formatSpeed(protonProgress.speed_bps)}`}
                     </span>
                   </div>
                   <div className="settings-proton__progress-bar">
@@ -285,7 +305,7 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
                     className="settings-modal__btn settings-modal__btn--cancel"
                     onClick={cancelProtonDownload}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               )}
@@ -300,9 +320,9 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
             <>
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">Launch at startup</span>
+                  <span className="settings-toggle__name">{t('settings.autostart.name')}</span>
                   <span className="settings-toggle__desc">
-                    Automatically start LLauncher when you log in
+                    {t('settings.autostart.desc')}
                   </span>
                 </div>
                 <button
@@ -312,23 +332,23 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
               </div>
 
               <div className="settings-modal__section">
-                <span className="settings-modal__label">After game launch</span>
+                <span className="settings-modal__label">{t('settings.afterLaunch')}</span>
                 <select
                   className="settings-proton__select"
                   value={form.on_launch_action || 'hide'}
                   onChange={(e) => handleChange('on_launch_action', e.target.value)}
                 >
-                  <option value="hide">Hide launcher</option>
-                  <option value="close">Close launcher</option>
-                  <option value="nothing">Keep open</option>
+                  <option value="hide">{t('settings.afterLaunchHide')}</option>
+                  <option value="close">{t('settings.afterLaunchClose')}</option>
+                  <option value="nothing">{t('settings.afterLaunchKeep')}</option>
                 </select>
               </div>
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">Native Vulkan</span>
+                  <span className="settings-toggle__name">{t('settings.vulkan.name')}</span>
                   <span className="settings-toggle__desc">
-                    Use the game's built-in Vulkan renderer (-vulkan)
+                    {t('settings.vulkan.desc')}
                   </span>
                 </div>
                 <button
@@ -339,9 +359,9 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">Wayland</span>
+                  <span className="settings-toggle__name">{t('settings.wayland.name')}</span>
                   <span className="settings-toggle__desc">
-                    Enable Wayland support in Proton (PROTON_ENABLE_WAYLAND=1)
+                    {t('settings.wayland.desc')}
                   </span>
                 </div>
                 <button
@@ -352,12 +372,12 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">GameMode</span>
+                  <span className="settings-toggle__name">{t('settings.gamemode.name')}</span>
                   <span className="settings-toggle__desc">
-                    Optimize CPU governor for gaming via gamemoderun
+                    {t('settings.gamemode.desc')}
                   </span>
                   {systemCheck && !systemCheck.has_gamemode && (
-                    <span className="settings-toggle__unavailable">Not installed</span>
+                    <span className="settings-toggle__unavailable">{t('settings.unavailable')}</span>
                   )}
                 </div>
                 <button
@@ -368,9 +388,9 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">DXVK Async</span>
+                  <span className="settings-toggle__name">{t('settings.dxvkAsync.name')}</span>
                   <span className="settings-toggle__desc">
-                    Async shader compilation via DXVK (reduces stuttering)
+                    {t('settings.dxvkAsync.desc')}
                   </span>
                 </div>
                 <button
@@ -381,9 +401,9 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">Disable Fsync</span>
+                  <span className="settings-toggle__name">{t('settings.fsync.name')}</span>
                   <span className="settings-toggle__desc">
-                    Disable Proton fsync (PROTON_NO_FSYNC=1)
+                    {t('settings.fsync.desc')}
                   </span>
                 </div>
                 <button
@@ -394,9 +414,9 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">Disable Esync</span>
+                  <span className="settings-toggle__name">{t('settings.esync.name')}</span>
                   <span className="settings-toggle__desc">
-                    Disable Proton esync (PROTON_NO_ESYNC=1)
+                    {t('settings.esync.desc')}
                   </span>
                 </div>
                 <button
@@ -407,12 +427,12 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
-                  <span className="settings-toggle__name">MangoHud</span>
+                  <span className="settings-toggle__name">{t('settings.mangohud.name')}</span>
                   <span className="settings-toggle__desc">
-                    Show FPS / frame time overlay
+                    {t('settings.mangohud.desc')}
                   </span>
                   {systemCheck && !systemCheck.has_mangohud && (
-                    <span className="settings-toggle__unavailable">Not installed</span>
+                    <span className="settings-toggle__unavailable">{t('settings.unavailable')}</span>
                   )}
                 </div>
                 <button
@@ -424,11 +444,11 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
               <div className="settings-toggle">
                 <div className="settings-toggle__info">
                   <span className="settings-toggle__name">
-                    Canonical Hole (skip_volatile_check)
-                    <span className="settings-toggle__experimental">Experimental</span>
+                    {t('settings.canonicalHole.name')}
+                    <span className="settings-toggle__experimental">{t('settings.experimental')}</span>
                   </span>
                   <span className="settings-toggle__desc">
-                    WINE_CANONICAL_HOLE=skip_volatile_check — may improve performance up to 200% (DWProton)
+                    {t('settings.canonicalHole.desc')}
                   </span>
                 </div>
                 <button
@@ -438,26 +458,26 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
               </div>
 
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Launch arguments</span>
+                <span className="settings-modal__label">{t('settings.launchArgs')}</span>
                 <input
                   value={form.custom_launch_args}
                   onChange={(e) => handleChange('custom_launch_args', e.target.value)}
-                  placeholder="e.g. -windowed -fullscreen"
+                  placeholder={t('settings.launchArgsPlaceholder')}
                   spellCheck={false}
                 />
               </div>
 
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Custom environment variables</span>
+                <span className="settings-modal__label">{t('settings.envVars')}</span>
                 <textarea
                   className="settings-textarea"
                   value={form.custom_env_vars}
                   onChange={(e) => handleChange('custom_env_vars', e.target.value)}
-                  placeholder={"# One per line, KEY=VALUE\nDXVK_HUD=fps\nMESA_SHADER_CACHE=1"}
+                  placeholder={"# KEY=VALUE\nDXVK_HUD=fps\nMESA_SHADER_CACHE=1"}
                   spellCheck={false}
                 />
                 <span className="settings-modal__hint">
-                  Lines starting with # are ignored
+                  {t('settings.envVarsHint')}
                 </span>
               </div>
             </>
@@ -466,7 +486,7 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
           {activeTab === 'downloads' && (
             <>
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Max concurrent downloads</span>
+                <span className="settings-modal__label">{t('settings.maxConcurrent')}</span>
                 <select
                   className="settings-proton__select"
                   value={form.download_max_concurrent || 4}
@@ -479,7 +499,7 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
               </div>
 
               <div className="settings-modal__section">
-                <span className="settings-modal__label">Speed limit</span>
+                <span className="settings-modal__label">{t('settings.speedLimit')}</span>
                 <div className="settings-speed-limit">
                   <input
                     type="number"
@@ -523,7 +543,38 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
                     <option value="KB/s">KB/s</option>
                   </select>
                 </div>
-                <span className="settings-modal__hint">0 or empty = unlimited</span>
+                <span className="settings-modal__hint">{t('settings.speedLimitHint')}</span>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'game' && (
+            <>
+              <div className="settings-action-row">
+                <div className="settings-action-row__info">
+                  <span className="settings-action-row__name">{t('settings.repair.name')}</span>
+                  <span className="settings-action-row__desc">{t('settings.repair.desc')}</span>
+                </div>
+                <button
+                  className="settings-modal__btn settings-modal__btn--secondary"
+                  onClick={handleRepair}
+                  disabled={repairing}
+                >
+                  {repairing ? t('common.loading') : t('settings.repair.button')}
+                </button>
+              </div>
+
+              <div className="settings-action-row">
+                <div className="settings-action-row__info">
+                  <span className="settings-action-row__name">{t('settings.viewLog.name')}</span>
+                  <span className="settings-action-row__desc">{t('settings.viewLog.desc')}</span>
+                </div>
+                <button
+                  className="settings-modal__btn settings-modal__btn--secondary"
+                  onClick={() => setShowLog(true)}
+                >
+                  {t('settings.viewLog.button')}
+                </button>
               </div>
             </>
           )}
@@ -531,13 +582,15 @@ export default function SettingsModal({ settings, systemCheck, onRefreshSystemCh
 
         <div className="settings-modal__footer">
           <button className="settings-modal__btn settings-modal__btn--cancel" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className="settings-modal__btn settings-modal__btn--save" onClick={handleSave}>
-            Save
+            {t('common.save')}
           </button>
         </div>
       </div>
+
+      {showLog && <LogViewer onClose={() => setShowLog(false)} />}
     </div>
   );
 }

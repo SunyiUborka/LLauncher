@@ -20,6 +20,16 @@ pub fn run() {
     // Use xdg-desktop-portal for file dialogs (native KDE/GNOME picker)
     std::env::set_var("GTK_USE_PORTAL", "1");
 
+    // Workaround for WebKitGTK 2.40+ EGL_BAD_PARAMETER on Arch/CachyOS/Fedora
+    // and NVIDIA setups. Disables the DMA-BUF renderer that breaks on many
+    // Linux GPU stacks. Respect the user's override if they set it explicitly.
+    #[cfg(target_os = "linux")]
+    {
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     let settings = AppSettings::load();
     let app_state = AppState::new(settings);
 
@@ -95,6 +105,8 @@ pub fn run() {
             commands::start_download,
             commands::cancel_download,
             commands::launch_game,
+            commands::read_launch_log,
+            commands::repair_game,
             commands::update_installed_version,
             commands::check_system_requirements,
             commands::get_dwproton_latest,

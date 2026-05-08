@@ -12,6 +12,11 @@ pub fn settings_path() -> PathBuf {
     config_dir().join("settings.json")
 }
 
+/// Game launch log path: ~/.config/llauncher/launch.log
+pub fn launch_log_path() -> PathBuf {
+    config_dir().join("launch.log")
+}
+
 /// Default game install directory
 pub fn default_game_dir() -> PathBuf {
     dirs::home_dir()

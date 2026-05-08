@@ -1,21 +1,24 @@
+import { useTranslation } from '../../i18n';
 import './ActionButton.css';
 
 export default function ActionButton({ gameState, downloading, onAction, disabled }) {
+  const { t } = useTranslation();
+
   if (downloading) {
     return (
       <button className="action-button action-button--downloading" disabled>
-        Downloading...
+        {t('home.action.downloading')}
       </button>
     );
   }
 
   const getLabel = () => {
-    if (!gameState) return 'Loading...';
+    if (!gameState) return t('home.action.loading');
     switch (gameState.status) {
-      case 'not_installed': return 'Install';
-      case 'update_available': return 'Update';
-      case 'ready': return 'Launch';
-      default: return 'Launch';
+      case 'not_installed': return t('home.action.install');
+      case 'update_available': return t('home.action.update');
+      case 'ready': return t('home.action.launch');
+      default: return t('home.action.launch');
     }
   };
 

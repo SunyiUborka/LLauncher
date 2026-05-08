@@ -1,6 +1,8 @@
-use std::path::Path;
-use std::process::Command;
+use std::os::unix::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
 
+use crate::config::paths;
 use crate::config::settings::AppSettings;
 use crate::error::AppError;
 
@@ -10,7 +12,12 @@ fn shell_escape(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
-pub fn launch_game(settings: &AppSettings) -> Result<(), AppError> {
+pub struct LaunchedGame {
+    pub child: Child,
+    pub log_path: PathBuf,
+}
+
+pub fn launch_game(settings: &AppSettings) -> Result<LaunchedGame, AppError> {
     let game_path = Path::new(&settings.game_dir);
     let exe_path = game_path.join("Endfield.exe");
 
@@ -35,11 +42,7 @@ pub fn launch_game(settings: &AppSettings) -> Result<(), AppError> {
     let compat_data = game_path.join("_proton");
     std::fs::create_dir_all(&compat_data)?;
 
-    // Log file path
-    let log_path = dirs::config_dir()
-        .unwrap_or_else(|| Path::new("/tmp").to_path_buf())
-        .join("llauncher")
-        .join("launch.log");
+    let log_path = paths::launch_log_path();
     std::fs::create_dir_all(log_path.parent().unwrap())?;
 
     // Build shell script with exported env vars
@@ -72,6 +75,12 @@ pub fn launch_game(settings: &AppSettings) -> Result<(), AppError> {
     }
     if settings.disable_esync {
         script.push_str("export PROTON_NO_ESYNC=1\n");
+    }
+
+    // Enable ntsync if the kernel device is present. Proton picks it over
+    // fsync/esync when this is set, giving better sync primitive performance.
+    if Path::new("/dev/ntsync").exists() {
+        script.push_str("export PROTON_ENABLE_NTSYNC=1\n");
     }
 
     if settings.use_canonical_hole {
@@ -129,11 +138,28 @@ pub fn launch_game(settings: &AppSettings) -> Result<(), AppError> {
         shell_escape(&log_path.to_string_lossy())
     ));
 
-    Command::new("bash")
-        .arg("-c")
-        .arg(&script)
+    let mut cmd = Command::new("bash");
+    cmd.arg("-c").arg(&script);
+
+    // Detach into a new process group so closing the launcher (or the
+    // launcher hiding/closing tray) does not propagate signals to the game.
+    cmd.process_group(0);
+
+    let child = cmd
         .spawn()
         .map_err(|e| AppError::GameNotFound(format!("Failed to launch: {}", e)))?;
 
-    Ok(())
+    Ok(LaunchedGame { child, log_path })
+}
+
+/// Read the tail of the launch log (last `max_lines` lines).
+/// Returns empty string if log does not exist or cannot be read.
+pub fn read_log_tail(log_path: &Path, max_lines: usize) -> String {
+    let content = match std::fs::read_to_string(log_path) {
+        Ok(c) => c,
+        Err(_) => return String::new(),
+    };
+    let lines: Vec<&str> = content.lines().collect();
+    let start = lines.len().saturating_sub(max_lines);
+    lines[start..].join("\n")
 }

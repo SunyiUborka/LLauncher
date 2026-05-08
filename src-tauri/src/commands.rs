@@ -1,5 +1,6 @@
 use tauri::{Emitter, State};
 
+use crate::config::paths;
 use crate::config::settings::AppSettings;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -95,11 +96,90 @@ pub async fn cancel_download(state: State<'_, AppState>) -> Result<(), AppError>
 }
 
 #[tauri::command]
-pub async fn launch_game(state: State<'_, AppState>) -> Result<(), AppError> {
+pub async fn launch_game(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), AppError> {
     let settings = state.settings.lock().await;
     let settings_clone = settings.clone();
     drop(settings);
-    crate::game::launcher::launch_game(&settings_clone)
+
+    let mut launched = crate::game::launcher::launch_game(&settings_clone)?;
+
+    // Watch the spawned process for ~3.5s. If it exits within that window,
+    // emit `launch://failed` with the exit code and a tail of the log so the
+    // UI can surface the failure (otherwise the game window would just never
+    // appear and the user would be left wondering).
+    let log_path = launched.log_path.clone();
+    tokio::task::spawn_blocking(move || {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(3500);
+        loop {
+            match launched.child.try_wait() {
+                Ok(Some(status)) => {
+                    // Give the game a moment to flush its stderr/stdout.
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    let log_tail = crate::game::launcher::read_log_tail(&log_path, 60);
+                    let _ = app.emit(
+                        "launch://failed",
+                        crate::api::types::LaunchFailed {
+                            exit_code: status.code(),
+                            log_tail,
+                        },
+                    );
+                    break;
+                }
+                Ok(None) => {
+                    if std::time::Instant::now() >= deadline {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn read_launch_log() -> Result<String, AppError> {
+    let log_path = paths::launch_log_path();
+    if !log_path.exists() {
+        return Ok(String::new());
+    }
+    Ok(std::fs::read_to_string(&log_path)?)
+}
+
+#[tauri::command]
+pub async fn repair_game(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    // Force a full repair by passing an empty installed_version: the API
+    // returns the complete pack list, and the worker auto-skips already-valid
+    // pack files via MD5, so untouched data is not re-downloaded.
+    let settings = state.settings.lock().await;
+    let download_dir = settings.download_dir.clone();
+    let game_dir = settings.game_dir.clone();
+    let speed_limit = settings.download_speed_limit;
+    let max_concurrent = settings.download_max_concurrent.clamp(1, 8);
+    drop(settings);
+
+    let client = state.http_client.clone();
+    let download_active = state.download_active.clone();
+
+    crate::download::manager::start_download(
+        app,
+        client,
+        download_active,
+        &download_dir,
+        &game_dir,
+        "",
+        speed_limit,
+        max_concurrent,
+    )
+    .await
 }
 
 #[tauri::command]

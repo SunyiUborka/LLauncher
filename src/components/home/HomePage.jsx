@@ -10,9 +10,11 @@ import SocialSidebar from './SocialSidebar';
 import ProtonPrompt from './ProtonPrompt';
 import useGameState from '../../hooks/useGameState';
 import useDownload from '../../hooks/useDownload';
+import { useTranslation } from '../../i18n';
 import './HomePage.css';
 
 export default function HomePage({ content, settings, systemCheck, onOpenSettings }) {
+  const { t } = useTranslation();
   const { gameState, loading: gameLoading, refresh } = useGameState();
   const [showProtonPrompt, setShowProtonPrompt] = useState(false);
 
@@ -64,13 +66,13 @@ export default function HomePage({ content, settings, systemCheck, onOpenSetting
         )}
         <div className="home-page__warnings">
           {systemCheck && !systemCheck.has_7z && (
-            <SystemWarning message="7z not found. Install p7zip-full for archive extraction." type="error" />
+            <SystemWarning message={t('home.warning.no7z')} type="error" />
           )}
           {systemCheck && !systemCheck.has_proton && (
-            <SystemWarning message="DWProton not configured. Set it up in Settings > Proton." type="warn" />
+            <SystemWarning message={t('home.warning.noProton')} type="warn" />
           )}
           {systemCheck && !systemCheck.has_ntsync && (
-            <SystemWarning message="ntsync not available. Game performance may be reduced." type="warn" />
+            <SystemWarning message={t('home.warning.noNtsync')} type="warn" />
           )}
         </div>
       </div>
@@ -83,9 +85,9 @@ export default function HomePage({ content, settings, systemCheck, onOpenSetting
           <button
             className="home-page__settings-btn"
             onClick={onOpenSettings}
-            title="Settings"
+            title={t('home.settingsTooltip')}
           >
-            {'\u2699'}
+            {'⚙'}
           </button>
         </div>
 
