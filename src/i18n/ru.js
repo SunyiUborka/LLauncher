@@ -27,6 +27,8 @@ export default {
       update: 'Обновить',
       launch: 'Запустить',
       downloading: 'Загрузка...',
+      verifying: 'Проверка...',
+      extracting: 'Распаковка...',
       loading: 'Загрузка...',
     },
     warning: {
@@ -38,6 +40,8 @@ export default {
   },
   progress: {
     fileLabel: 'Файл {current}/{total}: {name}',
+    verifyLabel: 'Проверка {current}/{total}: {name}',
+    extractLabel: 'Распаковка архива...',
   },
   protonPrompt: {
     title: 'Требуется DWProton',

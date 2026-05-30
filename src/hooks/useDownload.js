@@ -11,11 +11,21 @@ export default function useDownload(onComplete) {
     const unlisteners = [];
 
     listen('download://progress', (event) => {
-      setProgress(event.payload);
+      setProgress({ stage: 'downloading', ...event.payload });
     }).then((u) => unlisteners.push(u));
 
     listen('download://file-complete', (event) => {
-      setProgress((prev) => prev ? { ...prev, ...event.payload } : event.payload);
+      setProgress((prev) =>
+        prev ? { ...prev, ...event.payload } : { stage: 'downloading', ...event.payload }
+      );
+    }).then((u) => unlisteners.push(u));
+
+    listen('download://verify-progress', (event) => {
+      setProgress({ stage: 'verifying', ...event.payload });
+    }).then((u) => unlisteners.push(u));
+
+    listen('download://extract-progress', (event) => {
+      setProgress({ stage: 'extracting', ...event.payload });
     }).then((u) => unlisteners.push(u));
 
     listen('download://complete', (event) => {

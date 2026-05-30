@@ -29,13 +29,39 @@
   color: var(--color-text-secondary);
 }
 
+.progress-bar--extracting .progress-bar__fill {
+  background: linear-gradient(90deg, #34d399, #10b981);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.progress-bar--verifying .progress-bar__fill {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.progress-bar__stage {
+  color: var(--color-text-secondary);
+}
+
 .progress-bar__file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   margin-top: var(--space-xs);
-  white-space: nowrap;
+}
+
+.progress-bar__file-name {
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.progress-bar__cancel {
+  flex-shrink: 0;
 }
 
 .progress-bar__cancel {
