@@ -99,6 +99,8 @@ export default function HomePage({ content, settings, systemCheck, onOpenSetting
           <ActionButton
             gameState={gameState}
             downloading={downloading}
+            extracting={progress?.stage === 'extracting'}
+            verifying={progress?.stage === 'verifying'}
             onAction={handleAction}
             disabled={gameLoading}
           />

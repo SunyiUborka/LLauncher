@@ -213,6 +213,14 @@ pub struct DownloadFileComplete {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct ExtractProgress {
+    pub percent: u8,
+    pub bytes_processed: u64,
+    pub bytes_total: u64,
+    pub speed_bps: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct DownloadComplete {
     pub version: String,
 }

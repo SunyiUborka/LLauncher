@@ -119,11 +119,30 @@ pub async fn start_download(
         }
     }
 
-    // Extract
     let first_file_name = packs[0].url.split('/').last().unwrap_or("unknown");
     let first_part = download_path.join(first_file_name);
 
-    if let Err(e) = crate::download::extract::extract_split_zip(&first_part, game_path) {
+    let marker = crate::game::state::incomplete_marker(game_path);
+    std::fs::write(&marker, b"extracting").ok();
+
+    let extract_app = app.clone();
+    let game_path_owned = game_path.to_path_buf();
+    let extract_result = tokio::task::spawn_blocking(move || {
+        crate::download::extract::extract_split_zip(
+            &extract_app,
+            &first_part,
+            &game_path_owned,
+            total_size,
+        )
+    })
+    .await;
+
+    let extract_outcome = match extract_result {
+        Ok(inner) => inner,
+        Err(e) => Err(AppError::Api(format!("Extraction task failed: {}", e))),
+    };
+
+    if let Err(e) = extract_outcome {
         download_active.store(false, Ordering::SeqCst);
         app.emit(
             "download://error",
@@ -134,6 +153,8 @@ pub async fn start_download(
         .ok();
         return Err(e);
     }
+
+    std::fs::remove_file(&marker).ok();
 
     download_active.store(false, Ordering::SeqCst);
 
