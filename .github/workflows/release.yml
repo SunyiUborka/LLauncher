@@ -1,0 +1,66 @@
+name: Release
+
+# Portable AppImage build + GitHub release.
+#
+# The ubuntu-22.04 runner provides generic (baseline x86-64-v1) libraries and an
+# old glibc, so the AppImage built here runs on virtually any x86-64 Linux — unlike
+# one built on a CachyOS znver4 (AVX-512) machine, which SIGILLs on older CPUs.
+
+on:
+  push:
+    tags:
+      - '*.*.*'      # e.g. 0.2.1
+      - 'v*'         # e.g. v0.2.1
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. 0.2.1)'
+        required: true
+
+permissions:
+  contents: write   # required to create the release / upload the bundle
+
+jobs:
+  build-appimage:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: echo "value=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev \
+            file patchelf desktop-file-utils xdg-utils
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Frontend dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build AppImage + release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Let appimagetool bundle without FUSE
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        with:
+          tagName: ${{ steps.tag.outputs.value }}
+          releaseName: 'LLauncher v${{ steps.tag.outputs.value }}'
+          releaseDraft: true        # created as a draft so you can review before publishing
+          prerelease: false
+          args: --bundles appimage  # AppImage only (overrides tauri.conf "all"), avoids deb/rpm tooling issues
