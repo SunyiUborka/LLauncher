@@ -27,6 +27,8 @@ export default {
       update: 'Update',
       launch: 'Launch',
       downloading: 'Downloading...',
+      verifying: 'Verifying...',
+      extracting: 'Extracting...',
       loading: 'Loading...',
     },
     warning: {
@@ -38,6 +40,8 @@ export default {
   },
   progress: {
     fileLabel: 'File {current}/{total}: {name}',
+    verifyLabel: 'Verifying {current}/{total}: {name}',
+    extractLabel: 'Extracting archive...',
   },
   protonPrompt: {
     title: 'DWProton Required',

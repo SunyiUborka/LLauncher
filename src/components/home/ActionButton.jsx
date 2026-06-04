@@ -1,13 +1,18 @@
 import { useTranslation } from '../../i18n';
 import './ActionButton.css';
 
-export default function ActionButton({ gameState, downloading, onAction, disabled }) {
+export default function ActionButton({ gameState, downloading, extracting, verifying, onAction, disabled }) {
   const { t } = useTranslation();
 
   if (downloading) {
+    const label = extracting
+      ? t('home.action.extracting')
+      : verifying
+        ? t('home.action.verifying')
+        : t('home.action.downloading');
     return (
       <button className="action-button action-button--downloading" disabled>
-        {t('home.action.downloading')}
+        {label}
       </button>
     );
   }

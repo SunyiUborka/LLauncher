@@ -30,12 +30,64 @@ pub async fn download_file(
         .unwrap_or("unknown")
         .to_string();
 
-    // Check if already downloaded with correct MD5
     if dest.exists() {
-        if crate::download::verify::verify_md5(dest, &pack.md5)? {
-            if let Ok(meta) = std::fs::metadata(dest) {
-                agg_downloaded.fetch_add(meta.len(), Ordering::Relaxed);
-            }
+        let mut last_emit = std::time::Instant::now();
+        let mut verified_local: u64 = 0;
+        let is_valid = crate::download::verify::verify_md5_with_progress(
+            dest,
+            &pack.md5,
+            |n| {
+                if !cancel_flag.load(Ordering::SeqCst) {
+                    return Err(AppError::Cancelled);
+                }
+                verified_local += n;
+                agg_downloaded.fetch_add(n, Ordering::Relaxed);
+                if last_emit.elapsed().as_millis() >= 150 {
+                    let total_dl = agg_downloaded.load(Ordering::Relaxed);
+                    let elapsed = global_start.elapsed().as_secs_f64();
+                    let speed = if elapsed > 0.1 {
+                        (total_dl as f64 / elapsed) as u64
+                    } else {
+                        0
+                    };
+                    app.emit(
+                        "download://verify-progress",
+                        DownloadProgress {
+                            file_index,
+                            total_files,
+                            file_name: file_name.clone(),
+                            bytes_downloaded: total_dl,
+                            bytes_total: agg_total,
+                            speed_bps: speed,
+                        },
+                    )
+                    .ok();
+                    last_emit = std::time::Instant::now();
+                }
+                Ok(())
+            },
+        )?;
+
+        if is_valid {
+            let total_dl = agg_downloaded.load(Ordering::Relaxed);
+            let elapsed = global_start.elapsed().as_secs_f64();
+            let speed = if elapsed > 0.1 {
+                (total_dl as f64 / elapsed) as u64
+            } else {
+                0
+            };
+            app.emit(
+                "download://verify-progress",
+                DownloadProgress {
+                    file_index,
+                    total_files,
+                    file_name: file_name.clone(),
+                    bytes_downloaded: total_dl,
+                    bytes_total: agg_total,
+                    speed_bps: speed,
+                },
+            )
+            .ok();
             app.emit(
                 "download://file-complete",
                 crate::api::types::DownloadFileComplete {
@@ -47,6 +99,8 @@ pub async fn download_file(
             .ok();
             return Ok(());
         }
+
+        agg_downloaded.fetch_sub(verified_local, Ordering::Relaxed);
     }
 
     if let Some(parent) = dest.parent() {

@@ -1,7 +1,11 @@
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::error::AppError;
+
+pub fn incomplete_marker(game_dir: &Path) -> PathBuf {
+    game_dir.join(".llauncher_incomplete")
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "status")]
@@ -29,6 +33,10 @@ pub async fn determine_game_state(
     let version_info =
         crate::api::client::get_latest_game_version(client, installed_version).await?;
     let latest_version = version_info.version;
+
+    if incomplete_marker(game_path).exists() {
+        return Ok(GameState::NotInstalled { latest_version });
+    }
 
     // Check if game is installed
     if installed_version.is_empty() || !exe_path.exists() {

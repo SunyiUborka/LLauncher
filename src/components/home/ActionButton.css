@@ -1,6 +1,9 @@
 .action-button {
   position: relative;
-  padding: 18px 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   font-size: var(--font-size-2xl);
   font-weight: 700;
   letter-spacing: 2px;
@@ -11,7 +14,11 @@
   overflow: hidden;
   transition: all var(--transition-base);
   animation: glow 3s ease-in-out infinite;
-  min-width: 260px;
+  width: 320px;
+  height: 64px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  white-space: nowrap;
   text-align: center;
 }
 
