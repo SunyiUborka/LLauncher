@@ -1,10 +1,10 @@
 name: Release
 
-# Portable AppImage build + GitHub release.
+# Portable AppImage + .deb + .rpm build + GitHub release.
 #
 # The ubuntu-22.04 runner provides generic (baseline x86-64-v1) libraries and an
-# old glibc, so the AppImage built here runs on virtually any x86-64 Linux — unlike
-# one built on a CachyOS znver4 (AVX-512) machine, which SIGILLs on older CPUs.
+# old glibc, so the bundles built here run on virtually any x86-64 Linux — unlike
+# ones built on a CachyOS znver4 (AVX-512) machine, which SIGILLs on older CPUs.
 
 on:
   push:
@@ -21,7 +21,7 @@ permissions:
   contents: write   # required to create the release / upload the bundle
 
 jobs:
-  build-appimage:
+  build-bundles:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
             libayatana-appindicator3-dev librsvg2-dev \
-            file patchelf desktop-file-utils xdg-utils
+            file patchelf desktop-file-utils xdg-utils \
+            rpm   # rpmbuild for the .rpm bundle (dpkg-deb for .deb is preinstalled)
 
       - uses: actions/setup-node@v4
         with:
@@ -52,7 +53,7 @@ jobs:
       - name: Frontend dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Build AppImage + release
+      - name: Build bundles + release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,4 +64,4 @@ jobs:
           releaseName: 'LLauncher v${{ steps.tag.outputs.value }}'
           releaseDraft: true        # created as a draft so you can review before publishing
           prerelease: false
-          args: --bundles appimage  # AppImage only (overrides tauri.conf "all"), avoids deb/rpm tooling issues
+          args: --bundles appimage,deb,rpm  # portable AppImage + Debian/Ubuntu .deb + Fedora/RHEL .rpm
