@@ -38,3 +38,7 @@ smoke-*.png
 
 # UI smoke-test screenshots (kept locally, too heavy for history)
 .ui-screenshots/
+
+# pnpm (the repo uses yarn)
+pnpm-lock.yaml
+pnpm-workspace.yaml
