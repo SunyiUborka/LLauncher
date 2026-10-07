@@ -14,7 +14,8 @@ function Background({ background, gameRunning }) {
   const [imageLoaded, setImageLoaded] = useState(false),
     [videoLoaded, setVideoLoaded] = useState(false);
   const imageRef = useRef(null),
-    videoRef = useRef(null);
+    videoRef = useRef(null),
+    playedSrc = useRef(null);
   const imageUrl = background?.url,
     videoUrl = !reduced ? background?.video_url : null;
   const [video, setVideo] = useState(null),
@@ -152,16 +153,24 @@ function Background({ background, gameRunning }) {
           poster={imageUrl || undefined}
           className={videoLoaded ? "loaded" : ""}
           preload="metadata"
-          loop
           muted
           playsInline
-          onPlaying={() => setVideoLoaded(true)}
+          onEnded={(e) => {
+            // Not `loop`: seeking a blob back to the start stalls WebKitGTK.
+            e.currentTarget.load();
+            e.currentTarget.play()?.catch(() => {});
+          }}
+          onPlaying={() => {
+            playedSrc.current = videoSrc;
+            setVideoLoaded(true);
+          }}
           onError={(e) => {
             setVideoLoaded(false);
-            // Only a format error is final; the watchdog reloads after others.
+            // Only a format error on a copy that never played is final; the
+            // watchdog reloads after others.
             const notSupported =
               e.currentTarget.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED;
-            if (!notSupported) return;
+            if (!notSupported || playedSrc.current === videoSrc) return;
             const { url } = video;
             invoke("forget_background_video", { url }).catch(() => {});
             setVideo((v) => (v?.src === videoSrc ? null : v));
