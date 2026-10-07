@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { createBackgroundPlayback } from "../../utils/backgroundPlayback";
 import "./MainLayout.css";
+const LOOP_REST = 5000;
 function Background({ background, gameRunning }) {
   const [hidden, setHidden] = useState(document.hidden),
     [visible, setVisible] = useState(null),
@@ -20,9 +21,16 @@ function Background({ background, gameRunning }) {
     videoUrl = !reduced ? background?.video_url : null;
   const [video, setVideo] = useState(null),
     videoSrc = video?.src;
+  const [resting, setResting] = useState(false);
+  useEffect(() => {
+    if (!resting) return;
+    const id = setTimeout(() => setResting(false), LOOP_REST);
+    return () => clearTimeout(id);
+  }, [resting]);
   useEffect(() => {
     // Never streamed: WebKitGTK re-buffers remote media on every loop.
     setVideo(null);
+    setResting(false);
     if (!videoUrl) return;
     let cancelled = false;
     invoke("get_background_video", { url: videoUrl })
@@ -30,6 +38,7 @@ function Background({ background, gameRunning }) {
         if (cancelled) return;
         const blob = new Blob([bytes], { type: "video/mp4" });
         setVideo({ src: URL.createObjectURL(blob), url: videoUrl });
+        setResting(true); // the first play waits LOOP_REST too
       })
       .catch((e) => console.warn("No background video:", e));
     return () => {
@@ -129,7 +138,7 @@ function Background({ background, gameRunning }) {
       clearInterval(watchdog);
       playback.stop();
     };
-  }, [videoSrc, shouldPause, epoch]);
+  }, [videoSrc, shouldPause, epoch, resting]);
   return (
     <div
       className="main-layout__background"
@@ -146,20 +155,24 @@ function Background({ background, gameRunning }) {
           onError={() => setImageLoaded(false)}
         />
       )}
-      {videoSrc && (
+      {videoSrc && !resting && (
         <video
           ref={videoRef}
           src={videoSrc}
-          poster={imageUrl || undefined}
           className={videoLoaded ? "loaded" : ""}
           preload="metadata"
           muted
           playsInline
-          onEnded={(e) => {
-            // Not `loop`: seeking a blob back to the start stalls WebKitGTK.
-            e.currentTarget.load();
-            e.currentTarget.play()?.catch(() => {});
+          // No `loop`: WebKitGTK stalls seeking a blob back to the start and
+          // flashes the first frame at the end whatever the opacity. So the
+          // video fades out and unmounts just before its end, the image shows
+          // for LOOP_REST, and a fresh <video> plays from the start.
+          onTimeUpdate={(e) => {
+            const left = e.currentTarget.duration - e.currentTarget.currentTime;
+            if (left <= 1) setVideoLoaded(false);
+            if (left <= 0.3) setResting(true);
           }}
+          onEnded={() => setResting(true)}
           onPlaying={() => {
             playedSrc.current = videoSrc;
             setVideoLoaded(true);
